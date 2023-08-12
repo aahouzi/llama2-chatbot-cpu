@@ -2,18 +2,38 @@ import streamlit as st
 import os
 import torch
 import transformers
+import time
+import argparse
 from transformers import LlamaTokenizer, LlamaForCausalLM, pipeline
 from langchain.chains import ConversationChain
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.llms import HuggingFacePipeline
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--hf_auth",
+                    help='HuggingFace authentification token for getting LLaMa2',
+                    required=True)
+
+parser.add_argument("--window_len",
+                    type=int,
+                    help='Chat memory window length',
+                    default=5)
+
+args = parser.parse_args()
+
+
 # App title
-st.set_page_config(page_title="🦙💬 LLaMa2 Chatbot")
+st.set_page_config(
+    page_title="LLaMa2-7b Chatbot",
+    page_icon="🦙",
+    layout="centered",
+)
 
 def clear_chat_history():
-    st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
+    st.session_state.messages = [{"role": "assistant", "content": "How can I help you today ?"}]
     
-def get_conversation(llm, window_len=5):
+def get_conversation(llm, window_len=args.window_len):
     # Define memory
     window_memory = ConversationBufferWindowMemory(k=window_len)
     conversation = ConversationChain(
@@ -31,9 +51,9 @@ def LLMPipeline(temperature,
                 top_p,
                 top_k,
                 max_length,
+                hf_auth,
                 repetition_penalty=1.1,
-                model_id='meta-llama/Llama-2-7b-chat-hf',
-                hf_auth='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'):
+                model_id='meta-llama/Llama-2-7b-chat-hf'):
     
     # Initialize tokenizer & model
     tokenizer = LlamaTokenizer.from_pretrained(model_id, token=hf_auth)
@@ -60,7 +80,8 @@ def LLMPipeline(temperature,
 
 # Replicate Credentials
 with st.sidebar:
-    st.title('🦙💬 LLaMa2 Chatbot')    
+    st.title('🦙 LLaMa2-7b Chatbot')   
+    
     # Text generation params
     st.subheader('Text generation parameters')
     temperature = st.sidebar.slider('temperature', min_value=0.1, max_value=1.0, value=0.1, step=0.01)
@@ -69,11 +90,11 @@ with st.sidebar:
     max_length = st.sidebar.slider('max_length', min_value=64, max_value=4096, value=512, step=8)
     
     # Load conversation
-    conversation = LLMPipeline(temperature, top_p, top_k, max_length)
+    conversation = LLMPipeline(temperature, top_p, top_k, max_length, args.hf_auth)
 
 # Store LLM generated responses
 if "messages" not in st.session_state.keys():
-    st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
+    st.session_state.messages = [{"role": "assistant", "content": "How can I help you today ?"}]
 
 # Display or clear chat messages
 for message in st.session_state.messages:
@@ -92,13 +113,14 @@ if prompt := st.chat_input():
 # Generate a new response if last message is not from assistant
 if st.session_state.messages[-1]["role"] != "assistant":
     with st.chat_message("assistant"):
-        response = conversation.predict(input=prompt)
         placeholder = st.empty()
-        full_response = ""
         placeholder.markdown("▌")
+        response = conversation.predict(input=prompt)
+        full_response = ""
         for item in response:
             full_response += item
             placeholder.markdown(full_response + "▌")
+            time.sleep(0.04)
         placeholder.markdown(full_response)
     message = {"role": "assistant", "content": full_response}
     st.session_state.messages.append(message)
