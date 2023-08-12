@@ -8,10 +8,23 @@ from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.llms import HuggingFacePipeline
 
 # App title
-st.set_page_config(page_title="🦙💬 Llama 2 Chatbot")
+st.set_page_config(page_title="🦙💬 LLaMa2 Chatbot")
 
 def clear_chat_history():
     st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
+    
+def get_conversation(llm, window_len=5):
+    # Define memory
+    window_memory = ConversationBufferWindowMemory(k=window_len)
+    conversation = ConversationChain(
+        llm=llm, 
+        verbose=False, 
+        memory=window_memory
+    )
+
+    conversation.prompt.template = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know. You are the AI, so answer all the questions adressed to you respectfully. Current conversation:\n{history}\nHuman: {input}\nAI:"""
+    
+    return conversation
 
 @st.cache_resource()
 def LLMPipeline(temperature, 
@@ -32,46 +45,22 @@ def LLMPipeline(temperature,
                              tokenizer=tokenizer,
                              return_full_text=True,
                              task='text-generation',
-                             temperature=temperature
+                             temperature=temperature,
                              top_p=top_p,
                              top_k=top_k,                         
                              max_new_tokens=max_length,
                              repetition_penalty=repetition_penalty)
     
     llm = HuggingFacePipeline(pipeline=generate_text)
+    
+    # Create langchain conversation
+    conversation = get_conversation(llm)
   
-    return llm
-
-@st.cache_resource()
-def get_conversation(llm, window_len=5):
-    # Define memory
-    window_memory = ConversationBufferWindowMemory(k=window_len)
-    conversation = ConversationChain(
-        llm=llm, 
-        verbose=False, 
-        memory=window_memory
-    )
-
-    conversation.prompt.template = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know. You are the AI, and your role is to answer questions respectfully. Current conversation:\n{history}\nHuman: {input}\nAI:"""
-    
     return conversation
-
-# Function for generating LLaMA2 response
-def generate_llama2_response(conversation, prompt_input):
-#     string_dialogue = "You are a helpful assistant. You do not respond as 'User' or pretend to be 'User'. You only respond once as 'Assistant'."
-#     for dict_message in st.session_state.messages:
-#         if dict_message["role"] == "user":
-#             string_dialogue += "User: " + dict_message["content"] + "\\n\\n"
-#         else:
-#             string_dialogue += "Assistant: " + dict_message["content"] + "\\n\\n"
-            
-#     output = chat_model(f"prompt {string_dialogue} {prompt_input} Assistant: ")
-    
-    return conversation.predict(input=prompt_input)
 
 # Replicate Credentials
 with st.sidebar:
-    st.title('🦙💬 Llama 2 Chatbot')    
+    st.title('🦙💬 LLaMa2 Chatbot')    
     # Text generation params
     st.subheader('Text generation parameters')
     temperature = st.sidebar.slider('temperature', min_value=0.1, max_value=1.0, value=0.1, step=0.01)
@@ -79,9 +68,8 @@ with st.sidebar:
     top_k = st.sidebar.slider('top_k', min_value=0, max_value=100, value=20, step=10)
     max_length = st.sidebar.slider('max_length', min_value=64, max_value=4096, value=512, step=8)
     
-    # Load llm & conversation
-    llm = LLMPipeline(temperature, top_p, top_k, max_length)
-    conversation = get_conversation(llm)
+    # Load conversation
+    conversation = LLMPipeline(temperature, top_p, top_k, max_length)
 
 # Store LLM generated responses
 if "messages" not in st.session_state.keys():
@@ -104,13 +92,18 @@ if prompt := st.chat_input():
 # Generate a new response if last message is not from assistant
 if st.session_state.messages[-1]["role"] != "assistant":
     with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            response = generate_llama2_response(conversation, prompt)
-            placeholder = st.empty()
-            full_response = ''
-            for item in response:
-                full_response += item
-                placeholder.markdown(full_response)
-            placeholder.markdown(full_response)
+        response = conversation.predict(input=prompt)
+        placeholder = st.empty()
+        full_response = ""
+        placeholder.markdown("▌")
+        for item in response:
+            full_response += item
+            placeholder.markdown(full_response + "▌")
+        placeholder.markdown(full_response)
     message = {"role": "assistant", "content": full_response}
     st.session_state.messages.append(message)
+    
+    
+    
+    
+    
