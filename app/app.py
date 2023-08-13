@@ -116,6 +116,11 @@ def LLMPipeline(temperature,
                                              token=hf_auth)
     model.eval()
     
+    # Model params
+    num_att_heads = model.config.num_attention_heads
+    head_dim = model.config.hidden_size // model.config.num_attention_heads
+    num_layers = model.config.num_hidden_layers
+    
     # Apply IPEX llm branch optimizations
     if args.ipex:
         model = model.to(memory_format=torch.channels_last)
@@ -123,32 +128,31 @@ def LLMPipeline(temperature,
     
     # Graph mode
     if args.jit and args.ipex:
-        input_ids = torch.ones(32).to(torch.long)
+        input_ids = torch.ones(26).to(torch.long)
         attention_mask = torch.ones(len(input_ids))
         position_ids = torch.arange(len(input_ids))
         past_key_values = tuple(
             [
                 (
-                    torch.zeros([1, 1, 1, 1]).contiguous(),
-                    torch.zeros([1, 1, 1, 1]).contiguous(),
-                    torch.zeros(1, dtype=torch.long).contiguous(),
+                    torch.ones(size=[1, num_att_heads, len(input_ids), head_dim]),
+                    torch.ones(size=[1, num_att_heads, len(input_ids), head_dim]),
                 )
-                for i in range(model.config.num_hidden_layers)
+                for _ in range(num_layers)
             ]
         )
         example_inputs = (
             input_ids.unsqueeze(0),
             attention_mask.unsqueeze(0),
             position_ids.unsqueeze(0),
-            tuple(past_key_values),
+            past_key_values
         )
         with torch.no_grad(), torch.autocast(
             device_type=args.device,
             enabled=amp_enabled,
             dtype=amp_dtype if amp_enabled else None,
         ):
-            model = torch.jit.trace(model.eval(), example_inputs, strict=False)
-            model = torch.jit.freeze(model.eval())
+            model = torch.jit.trace(model, example_inputs, strict=False)
+            model = torch.jit.freeze(model)
         
     # Warmup iterations
     logger.info('[INFO]: Starting warmup.. \n')
