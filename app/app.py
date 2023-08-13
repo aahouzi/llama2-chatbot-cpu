@@ -4,13 +4,16 @@ import torch
 import transformers
 import time
 import argparse
+from streamlit.logger import get_logger
 from transformers import LlamaTokenizer, LlamaForCausalLM, pipeline
 from langchain.chains import ConversationChain
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.llms import HuggingFacePipeline
 
 
+logger = get_logger(__name__)
 parser = argparse.ArgumentParser()
+
 parser.add_argument("--hf_auth",
                     help='HuggingFace authentification token for getting LLaMa2',
                     required=True)
@@ -20,7 +23,56 @@ parser.add_argument("--window_len",
                     help='Chat memory window length',
                     default=5)
 
+parser.add_argument("--dtype",
+                    type=str,
+                    choices=["float32", "bfloat16"],
+                    default="float32",
+                    help="bfloat16, float32")
+
+parser.add_argument("--device",
+                    type=str,
+                    choices=["cpu"],
+                    default="cpu",
+                    help="cpu")
+
+parser.add_argument("--max-new-tokens",
+                    type=int,
+                    default=32,
+                    help="Max tokens for warmup")
+
+parser.add_argument("--prompt",
+                    type=str,
+                    default="Once upon time, there was",
+                    help="Text prompt for warmup")
+
+parser.add_argument("--num_warmup",
+                    type=int, 
+                    default=15,
+                    help="Number of warmup iterations")
+
+parser.add_argument("--ipex",
+                    action="store_true")
+
+parser.add_argument("--jit",
+                    action="store_true")
+
 args = parser.parse_args()
+
+
+if args.ipex:
+    import intel_extension_for_pytorch as ipex
+    try:
+        ipex._C.disable_jit_linear_repack()
+    except Exception:
+        pass
+    
+if args.jit:
+    torch._C._jit_set_texpr_fuser_enabled(False)
+
+    
+# Check if amp is enabled
+amp_enabled = True if args.dtype != "float32" else False
+amp_dtype = getattr(torch, args.dtype)
 
 
 # App title
@@ -57,8 +109,60 @@ def LLMPipeline(temperature,
     
     # Initialize tokenizer & model
     tokenizer = LlamaTokenizer.from_pretrained(model_id, token=hf_auth)
-    model = LlamaForCausalLM.from_pretrained(model_id, token=hf_auth)
+    model = LlamaForCausalLM.from_pretrained(model_id,
+                                             torch_dtype=amp_dtype,
+                                             low_cpu_mem_usage=True,
+                                             torchscript=args.jit,
+                                             token=hf_auth)
     model.eval()
+    
+    # Apply IPEX llm branch optimizations
+    if args.ipex:
+        model = model.to(memory_format=torch.channels_last)
+        model = ipex._optimize_transformers(model, dtype=amp_dtype, inplace=True)
+    
+    # Graph mode
+    if args.jit and args.ipex:
+        input_ids = torch.ones(32).to(torch.long)
+        attention_mask = torch.ones(len(input_ids))
+        position_ids = torch.arange(len(input_ids))
+        past_key_values = tuple(
+            [
+                (
+                    torch.zeros([1, 1, 1, 1]).contiguous(),
+                    torch.zeros([1, 1, 1, 1]).contiguous(),
+                    torch.zeros(1, dtype=torch.long).contiguous(),
+                )
+                for i in range(model.config.num_hidden_layers)
+            ]
+        )
+        example_inputs = (
+            input_ids.unsqueeze(0),
+            attention_mask.unsqueeze(0),
+            position_ids.unsqueeze(0),
+            tuple(past_key_values),
+        )
+        with torch.no_grad(), torch.autocast(
+            device_type=args.device,
+            enabled=amp_enabled,
+            dtype=amp_dtype if amp_enabled else None,
+        ):
+            model = torch.jit.trace(model.eval(), example_inputs, strict=False)
+            model = torch.jit.freeze(model.eval())
+        
+    # Warmup iterations
+    logger.info('[INFO]: Starting warmup.. \n')
+    with torch.inference_mode(), torch.no_grad(), torch.autocast(
+        device_type=args.device,
+        enabled=amp_enabled,
+        dtype=amp_dtype if amp_enabled else None
+    ):
+        for i in range(args.num_warmup):
+            start = time.time()
+            input_ids = tokenizer(args.prompt, return_tensors="pt").input_ids.to(args.device)
+            output = model.generate(input_ids, max_new_tokens=args.max_new_tokens, do_sample=True, top_p=top_p, top_k=top_k)
+            logger.info('[INFO]: Time generation: %.3f sec \n' %(time.time()-start))
+    logger.info('[INFO]: Warmup finished \n')
     
     # Define HF pipeline
     generate_text = pipeline(model=model,
