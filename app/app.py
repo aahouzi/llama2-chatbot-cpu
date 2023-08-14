@@ -19,6 +19,12 @@ parser.add_argument("--hf_auth",
                     help='HuggingFace authentification token for getting LLaMa2',
                     required=True)
 
+parser.add_argument("--model-id",
+                    type=str,
+                    choices=["meta-llama/Llama-2-7b-chat-hf", "meta-llama/Llama-2-13b-chat-hf"],
+                    default="meta-llama/Llama-2-7b-chat-hf",
+                    help="Hugging Face model id")
+
 parser.add_argument("--window_len",
                     type=int,
                     help='Chat memory window length',
@@ -106,7 +112,7 @@ def LLMPipeline(temperature,
                 max_length,
                 hf_auth,
                 repetition_penalty=1.1,
-                model_id='meta-llama/Llama-2-7b-chat-hf'):
+                model_id=args.model_id):
     
     # Initialize tokenizer & model
     tokenizer = LlamaTokenizer.from_pretrained(model_id, token=hf_auth)
