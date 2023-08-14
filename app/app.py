@@ -5,6 +5,7 @@ import transformers
 import time
 import argparse
 from streamlit.logger import get_logger
+from optimum.intel.generation.modeling import TSModelForCausalLM
 from transformers import LlamaTokenizer, LlamaForCausalLM, pipeline
 from langchain.chains import ConversationChain
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
@@ -126,13 +127,12 @@ def LLMPipeline(temperature,
         model = model.to(memory_format=torch.channels_last)
         model = ipex._optimize_transformers(model, dtype=amp_dtype, inplace=True)
     
-    # Graph mode
+    # IPEX Graph mode
     if args.jit and args.ipex:
         dummy_input = tokenizer(args.prompt, return_tensors="pt")
         input_ids = dummy_input['input_ids']
         attention_mask = torch.ones(1, input_ids.shape[-1] + 1)
         attention_mask[:, 0] = 0
-        position_ids = torch.arange(input_ids.shape[-1])
         past_key_values = tuple(
             [
                 (
@@ -142,19 +142,20 @@ def LLMPipeline(temperature,
                 for _ in range(num_layers)
             ]
         )
-        example_inputs = (
-            input_ids,
-            attention_mask,
-            position_ids.unsqueeze(0),
-            past_key_values
-        )
+        example_inputs = {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "past_key_values": past_key_values,
+        }
         with torch.no_grad(), torch.autocast(
             device_type=args.device,
             enabled=amp_enabled,
             dtype=amp_dtype if amp_enabled else None,
         ):
-            model = torch.jit.trace(model, example_inputs, strict=False)
-            model = torch.jit.freeze(model)
+            trace_model = torch.jit.trace(model, example_kwarg_inputs=example_inputs, strict=False, check_trace=False)
+            trace_model = torch.jit.freeze(trace_model)
+            # Use TSModelForCausalLM wrapper since traced models don't have a generate method
+            model = TSModelForCausalLM(trace_model, model.config)
         
     # Warmup iterations
     logger.info('[INFO]: Starting warmup.. \n')
