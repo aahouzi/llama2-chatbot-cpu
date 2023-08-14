@@ -128,21 +128,23 @@ def LLMPipeline(temperature,
     
     # Graph mode
     if args.jit and args.ipex:
-        input_ids = torch.ones(26).to(torch.long)
-        attention_mask = torch.ones(len(input_ids))
-        position_ids = torch.arange(len(input_ids))
+        dummy_input = tokenizer(args.prompt, return_tensors="pt")
+        input_ids = dummy_input['input_ids']
+        attention_mask = torch.ones(1, input_ids.shape[-1] + 1)
+        attention_mask[:, 0] = 0
+        position_ids = torch.arange(input_ids.shape[-1])
         past_key_values = tuple(
             [
                 (
-                    torch.ones(size=[1, num_att_heads, len(input_ids), head_dim]),
-                    torch.ones(size=[1, num_att_heads, len(input_ids), head_dim]),
+                    torch.ones(size=[1, num_att_heads, 1, head_dim]),
+                    torch.ones(size=[1, num_att_heads, 1, head_dim]),
                 )
                 for _ in range(num_layers)
             ]
         )
         example_inputs = (
-            input_ids.unsqueeze(0),
-            attention_mask.unsqueeze(0),
+            input_ids,
+            attention_mask,
             position_ids.unsqueeze(0),
             past_key_values
         )
