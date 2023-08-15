@@ -15,11 +15,11 @@ from langchain.llms import HuggingFacePipeline
 logger = get_logger(__name__)
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--hf_auth",
+parser.add_argument("--auth_token",
                     help='HuggingFace authentification token for getting LLaMa2',
                     required=True)
 
-parser.add_argument("--model-id",
+parser.add_argument("--model_id",
                     type=str,
                     choices=["meta-llama/Llama-2-7b-chat-hf", "meta-llama/Llama-2-13b-chat-hf"],
                     default="meta-llama/Llama-2-7b-chat-hf",
@@ -42,7 +42,7 @@ parser.add_argument("--device",
                     default="cpu",
                     help="cpu")
 
-parser.add_argument("--max-new-tokens",
+parser.add_argument("--max_new_tokens",
                     type=int,
                     default=32,
                     help="Max tokens for warmup")
@@ -207,7 +207,7 @@ with st.sidebar:
     max_length = st.sidebar.slider('max_length', min_value=64, max_value=4096, value=512, step=8)
     
     # Load conversation
-    conversation = LLMPipeline(temperature, top_p, top_k, max_length, args.hf_auth)
+    conversation = LLMPipeline(temperature, top_p, top_k, max_length, args.auth_token)
 
 # Store LLM generated responses
 if "messages" not in st.session_state.keys():
