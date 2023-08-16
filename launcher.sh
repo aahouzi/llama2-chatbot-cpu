@@ -1,6 +1,10 @@
 #!/bin/bash
 set -x
 
+FILE=./models/best_model.pt
+OUTPUT_DIR=./models
+PHYSICAL_CORES=56
+
 function main {
 
   init_params "$@"
@@ -20,6 +24,7 @@ function init_params {
   max_new_tokens=32
   prompt="Once upon a time, there was"
   num_warmup=15
+  alpha=0.8
   extra_cmd=""
   for var in "$@"
   do
@@ -54,11 +59,17 @@ function init_params {
       --num_warmup=*)
           num_warmup=$(echo $var | cut -f2 -d=)
       ;;
+      --alpha=*)
+          alpha=$(echo $var | cut -f2 -d=)
+      ;;
       --ipex)
           extra_cmd=$extra_cmd" --ipex"
       ;;
       --jit)
           extra_cmd=$extra_cmd" --jit"
+      ;;
+      --sq)
+          extra_cmd=$extra_cmd" --sq"
       ;;
 
       *)
@@ -81,7 +92,6 @@ function start_app {
     export KMP_BLOCKTIME=INF
     export KMP_TPAUSE=0
     export KMP_SETTINGS=1
-    export PHYSICAL_CORES=56
     export KMP_AFFINITY=granularity=fine,compact,1,0
     export KMP_FORJOIN_BARRIER_PATTERN=dist,dist
     export KMP_PLAIN_BARRIER_PATTERN=dist,dist
@@ -89,7 +99,16 @@ function start_app {
     export LD_PRELOAD=${LD_PRELOAD}:${CONDA_PREFIX}/lib/libiomp5.so # Intel OpenMP
     export LD_PRELOAD=${LD_PRELOAD}:${CONDA_PREFIX}/lib/libtcmalloc.so
     export OMP_NUM_THREADS=${PHYSICAL_CORES}
-
+    
+    # Check if there is a quantized model, when user selects smooth quantization
+    if [ $extra_cmd =~ "--sq" ] && ! [ -f "$FILE" ]; then
+        echo -e '\n[INFO]: Quantized model not detected, launching SmoothQuant process..\n'
+        python3 smoothquant/run_generation.py --model ${model_id} --output_dir ${OUTPUT_DIR} --alpha ${alpha} --auth_token ${auth_token} --quantize --sq --ipex
+        echo -e '\n[INFO]: Starting SmoothQuant performance evaluation..\n'
+        python3 smoothquant/run_generation.py --model ${model_id} --output_dir ${OUTPUT_DIR} --auth_token ${auth_token} --benchmark --ipex --int8
+        echo -e '\n[INFO]: Starting SmoothQuant accuracy evaluation..\n'
+        python3 smoothquant/run_generation.py --model ${model_id} --output_dir ${OUTPUT_DIR} --tasks lambada_openai --batch_size 112 --accuracy --int8 --ipex
+    fi
 
     echo -e '\n[INFO]: Starting streamlit app..\n'
     echo -e ${prompt}

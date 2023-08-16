@@ -57,11 +57,22 @@ parser.add_argument("--num_warmup",
                     default=15,
                     help="Number of warmup iterations")
 
+parser.add_argument("--alpha",
+                    default="auto",
+                    help="Smooth quant parameter")
+
+parser.add_argument("--output_dir",
+                    default="./models")
+
 parser.add_argument("--ipex",
                     action="store_true")
 
 parser.add_argument("--jit",
                     action="store_true")
+
+parser.add_argument("--sq",
+                    action="store_true")
+
 
 args = parser.parse_args()
 
@@ -132,6 +143,10 @@ def LLMPipeline(temperature,
     if args.ipex:
         model = model.to(memory_format=torch.channels_last)
         model = ipex._optimize_transformers(model, dtype=amp_dtype, inplace=True)
+    
+    # Smooth quantization option
+    if args.sq:
+        model = TSModelForCausalLM.from_pretrained(args.output_dir, file_name="best_model.pt")
     
     # IPEX Graph mode
     if args.jit and args.ipex:

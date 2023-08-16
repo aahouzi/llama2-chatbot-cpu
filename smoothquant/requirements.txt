@@ -1,0 +1,14 @@
+intel-extension-for-transformers==1.1 
+accelerate==0.21.0
+einops==0.6.1
+datasets==2.14.4
+protobuf==3.20.3
+sentencepiece==0.1.99
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==2.0.1+cpu
+transformers==4.31.0
+neural-compressor==2.2.1
+intel_extension_for_pytorch==2.0.100 
+git+https://github.com/huggingface/optimum.git
+git+https://github.com/huggingface/optimum-intel.git@8ab1683f9e8cf39152db65eae18e8e00952afe25
+git+https://github.com/EleutherAI/lm-evaluation-harness.git@83dbfbf6070324f3e5872f63e49d49ff7ef4c9b3
