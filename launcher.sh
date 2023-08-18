@@ -1,8 +1,8 @@
 #!/bin/bash
 set -x
 
+CONDA_ENV=amall
 FILE=./models/best_model.pt
-OUTPUT_DIR=./models
 PHYSICAL_CORES=56
 
 function main {
@@ -22,7 +22,7 @@ function init_params {
   dtype="float32"
   device="cpu"
   max_new_tokens=32
-  prompt="Once upon a time, there was"
+  prompt="Once upon time, there was"
   num_warmup=15
   alpha=0.8
   extra_cmd=""
@@ -71,7 +71,6 @@ function init_params {
       --sq)
           extra_cmd=$extra_cmd" --sq"
       ;;
-
       *)
           echo "Error: No such parameter: ${var}"
           exit 1
@@ -83,10 +82,19 @@ function init_params {
 
 
 function start_app {
-
-    # Activate env
-    source ~/anaconda3/bin/activate amall
-
+    
+    # Check if there is a quantized model, when user selects smooth quantization
+    if [[ $extra_cmd =~ "--sq" ]] && ! [ -f "$FILE" ]; then
+        echo -e '\n[INFO]: Quantized model not detected, launching SmoothQuant process..\n'
+        conda create -y -n smoothquant python=3.9 && eval "$(conda shell.bash hook)" && conda activate smoothquant && pip install -r smoothquant/requirements.txt
+        python3 smoothquant/run_generation.py --model ${model_id} --alpha ${alpha} --auth_token ${auth_token} --quantize --sq --ipex
+        echo -e '\n[INFO]: Starting SmoothQuant performance evaluation..\n'
+        python3 smoothquant/run_generation.py --model ${model_id} --auth_token ${auth_token} --benchmark --ipex --int8
+        echo -e '\n[INFO]: Starting SmoothQuant accuracy evaluation..\n'
+        python3 smoothquant/run_generation.py --model ${model_id} --auth_token ${auth_token} --batch_size 112 --accuracy --int8 --ipex
+        conda deactivate && conda env remove -n smoothquant && conda activate $CONDA_ENV
+    fi
+    
     # Setup environment variables for performance on Xeon
     export LD_PRELOAD=${CONDA_PREFIX}/lib/libstdc++.so.6
     export KMP_BLOCKTIME=INF
@@ -99,19 +107,9 @@ function start_app {
     export LD_PRELOAD=${LD_PRELOAD}:${CONDA_PREFIX}/lib/libiomp5.so # Intel OpenMP
     export LD_PRELOAD=${LD_PRELOAD}:${CONDA_PREFIX}/lib/libtcmalloc.so
     export OMP_NUM_THREADS=${PHYSICAL_CORES}
-    
-    # Check if there is a quantized model, when user selects smooth quantization
-    if [ $extra_cmd =~ "--sq" ] && ! [ -f "$FILE" ]; then
-        echo -e '\n[INFO]: Quantized model not detected, launching SmoothQuant process..\n'
-        python3 smoothquant/run_generation.py --model ${model_id} --output_dir ${OUTPUT_DIR} --alpha ${alpha} --auth_token ${auth_token} --quantize --sq --ipex
-        echo -e '\n[INFO]: Starting SmoothQuant performance evaluation..\n'
-        python3 smoothquant/run_generation.py --model ${model_id} --output_dir ${OUTPUT_DIR} --auth_token ${auth_token} --benchmark --ipex --int8
-        echo -e '\n[INFO]: Starting SmoothQuant accuracy evaluation..\n'
-        python3 smoothquant/run_generation.py --model ${model_id} --output_dir ${OUTPUT_DIR} --tasks lambada_openai --batch_size 112 --accuracy --int8 --ipex
-    fi
+
 
     echo -e '\n[INFO]: Starting streamlit app..\n'
-    echo -e ${prompt}
     numactl -m 0 -C 0-$(($PHYSICAL_CORES-1)) streamlit run ${script} \
                                        --server.port=${port} -- \
                                        --auth_token=${auth_token} \
@@ -123,6 +121,7 @@ function start_app {
                                        --prompt="${prompt}" \
                                        --num_warmup=${num_warmup} \
                                        ${extra_cmd}
+
 }
 
 main "$@"
