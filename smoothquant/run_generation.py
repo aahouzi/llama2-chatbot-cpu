@@ -6,109 +6,132 @@ import os
 import pathlib
 import torch
 import types
+import numpy as np
+from itertools import chain
 from pathlib import Path
 from datasets import load_dataset
 from torch.nn.functional import pad
 from torch.utils.data import DataLoader
 from transformers import AutoModelForCausalLM, AutoTokenizer, PretrainedConfig
 import transformers
-from modeling_gptj import GPTJForCausalLM
 from modeling_llama import LlamaForCausalLM
-from modeling_bloom import BloomForCausalLM
-from modeling_gpt_neox import GPTNeoXForCausalLM
-from modeling_opt import OPTForCausalLM
 from optimum.utils import NormalizedConfigManager
-
-# to use modeling gptj modification base transformers 4.28.1:
-transformers.models.gptj.modeling_gptj.GPTJForCausalLM = GPTJForCausalLM
 transformers.models.llama.modeling_llama.LlamaForCausalLM = LlamaForCausalLM
-transformers.models.bloom.modeling_bloom.BloomForCausalLM = BloomForCausalLM
-transformers.models.gpt_neox.modeling_gpt_neox.GPTNeoXForCausalLM = GPTNeoXForCausalLM
-transformers.models.opt.modeling_opt.OPTForCausalLM = OPTForCausalLM
-import numpy as np
-from itertools import chain
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--model", nargs="?", default="EleutherAI/gpt-j-6B", const="EleutherAI/gpt-j-6B"
-)
+
+parser.add_argument("--model",
+                    nargs="?",
+                    default="meta-llama/Llama-2-7b-chat-hf",
+                    const="meta-llama/Llama-2-7b-chat-hf")
+
 parser.add_argument("--auth_token",
-                    help='HuggingFace authentification token for getting LLaMa2',
-                    required=True)
-parser.add_argument("--revision", default=None, type=str)
-parser.add_argument("--trust_remote_code", default=True)
-parser.add_argument(
-    "--dataset", nargs="?", default="NeelNanda/pile-10k", const="NeelNanda/pile-10k"
-)
-parser.add_argument("--dtype", type=str, default="int8")
-parser.add_argument(
-    "--max-new-tokens", default=32, type=int, help="output max new tokens"
-)
-parser.add_argument("--output_dir", nargs="?", default="./saved_results")
-parser.add_argument("--quantize", action="store_true")
-parser.add_argument("--ipex", action="store_true")
-parser.add_argument("--sq", action="store_true")
-parser.add_argument("--alpha", default="auto", help="Smooth quant parameter.")
-parser.add_argument(
-    "--pad_max_length", default=512, type=int, help="Pad input ids to max length."
-)
-parser.add_argument("--calib_iters", default=512, type=int, help="calibration iters.")
-parser.add_argument("--int8", action="store_true")
-parser.add_argument(
-    "--int8_bf16_mixed",
-    action="store_true",
-    help="by default it is int8-fp32 mixed, to enable int8 mixed amp bf16 (work on platforms like SPR)",
-)
-parser.add_argument("--benchmark", action="store_true")
-parser.add_argument("--iters", default=100, type=int, help="num iter")
-parser.add_argument("--num_warmup", default=10, type=int, help="num warmup")
-parser.add_argument("--accuracy", action="store_true")
-parser.add_argument("--batch_size", default=1, type=int,
+                    required=True,
+                    help='HuggingFace authentification token for getting LLaMa2')
+
+parser.add_argument("--revision",
+                    type=str,
+                    default=None)
+
+parser.add_argument("--dataset",
+                    nargs="?",
+                    default="NeelNanda/pile-10k",
+                    const="NeelNanda/pile-10k")
+
+parser.add_argument("--dtype",
+                    type=str, 
+                    default="int8")
+
+parser.add_argument("--max-new-tokens",
+                    default=32,
+                    type=int,
+                    help="output max new tokens")
+
+parser.add_argument("--output_dir",
+                    nargs="?",
+                    default="./models")
+
+parser.add_argument("--alpha",
+                    default="auto",
+                    help="Smooth quant parameter.")
+
+parser.add_argument("--pad_max_length",
+                    default=512,
+                    type=int,
+                    help="Pad input ids to max length.")
+
+parser.add_argument("--calib_iters",
+                    default=512,
+                    type=int,
+                    help="Calibration iters.")
+
+parser.add_argument("--calib_size",
+                    default=1,
+                    type=int,
+                    help="Calibration size.")
+
+parser.add_argument("--iters",
+                    default=100,
+                    type=int, 
+                    help="num iter")
+
+parser.add_argument("--num_warmup",
+                    default=10,
+                    type=int,
+                    help="num warmup")
+
+parser.add_argument("--batch_size",
+                    default=1,
+                    type=int,
                     help="batch size num.")
-parser.add_argument("--save_accuracy_path", default=None,
+
+parser.add_argument("--save_accuracy_path",
+                    default=None,
                     help="Save accuracy results path.")
-parser.add_argument("--tasks", nargs='+', default=["winogrande", "copa", "piqa", "rte", "hellaswag", \
-                    "openbookqa", "lambada_openai", "lambada_standard", "wikitext"], type=str, \
+
+parser.add_argument("--tasks",
+                    nargs='+',
+                    default="lambada_openai",
+                    type=str,
                     help="tasks list for accuracy validation")
+
+parser.add_argument("--quantize",
+                    action="store_true")
+
+parser.add_argument("--ipex",
+                    action="store_true")
+
+parser.add_argument("--sq",
+                    action="store_true")
+
+parser.add_argument("--int8",
+                    action="store_true")
+
+parser.add_argument("--benchmark",
+                    action="store_true")
+
+parser.add_argument("--accuracy",
+                    action="store_true")
+
+parser.add_argument("--int8_bf16_mixed",
+                    action="store_true",
+                    help="Enable int8 mixed amp bf16 (work on platforms like SPR)")
+
 args = parser.parse_args()
 
-calib_size = 1
 
 # model
-if re.search("llama", args.model.lower()):
-    from transformers import LlamaForCausalLM, LlamaTokenizer
+from transformers import LlamaForCausalLM, LlamaTokenizer
 
-    user_model = LlamaForCausalLM.from_pretrained(
-        args.model,
-        token=args.auth_token,
-        torchscript=True
-        if args.sq
-        else False,  # torchscript will force `return_dict=False` to avoid jit errors
-    )
-    tokenizer = LlamaTokenizer.from_pretrained(args.model, token=args.auth_token)
-elif re.search("mpt", args.model.lower()):
-    from mpt_7b.modeling_mpt import MPTForCausalLM
-    user_model = MPTForCausalLM.from_pretrained(
-        args.model,
-        torchscript=True
-        if args.sq
-        else False,  # torchscript will force `return_dict=False` to avoid jit errors
-        trust_remote_code=args.trust_remote_code,
-        revision=args.revision
-    )
-    tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=args.trust_remote_code)
-    user_model.config.use_cache = True
-else:
-    user_model = AutoModelForCausalLM.from_pretrained(
-        args.model,
-        torchscript=True
-        if args.ipex
-        else False,  # torchscript will force `return_dict=False` to avoid jit errors
-        trust_remote_code=args.trust_remote_code,
-        revision=args.revision
-    )
-    tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=args.trust_remote_code)
+user_model = LlamaForCausalLM.from_pretrained(
+    args.model,
+    token=args.auth_token,
+    torchscript=True
+    if args.sq
+    else False,  # torchscript will force `return_dict=False` to avoid jit errors
+)
+tokenizer = LlamaTokenizer.from_pretrained(args.model, token=args.auth_token)
 
 # to channels last
 user_model = user_model.to(memory_format=torch.channels_last)
@@ -129,25 +152,9 @@ if args.quantize:
         num_attention_heads = normalized_config.num_attention_heads
         hidden_size = normalized_config.hidden_size
         d_k = hidden_size // num_attention_heads
-
-        if user_model.config.model_type == "bloom":
-            pkv = ()
-            for nb_pkv in range(nb_pkv):
-                if nb_pkv % 2 == 0:
-                    new_shape = [input_bs * num_attention_heads, d_k, 1]
-                else:
-                    new_shape = [input_bs * num_attention_heads, 1, d_k]
-                pkv = pkv + (torch.ones(size=new_shape),)
-        elif user_model.config.model_type == "mpt":
-            new_key_shape = [input_bs, num_attention_heads, d_k, 1]
-            new_value_shape = [input_bs, num_attention_heads, 1, d_k]
-            dummy_key_tensor = torch.ones(size=new_key_shape)
-            dummy_value_tensor = torch.ones(size=new_value_shape)
-            pkv= tuple([dummy_key_tensor, dummy_value_tensor])
-        else:
-            new_shape = [input_bs, num_attention_heads, 1, d_k]
-            dummy_tensor = torch.ones(size=new_shape)
-            pkv = tuple(dummy_tensor for _ in range(nb_pkv))
+        new_shape = [input_bs, num_attention_heads, 1, d_k]
+        dummy_tensor = torch.ones(size=new_shape)
+        pkv = tuple(dummy_tensor for _ in range(nb_pkv))
         past_key_values = tuple(tuple(pkv) for _ in range(num_layers))
         return past_key_values
 
@@ -210,7 +217,7 @@ if args.quantize:
     )
     calib_dataloader = DataLoader(
         calib_evaluator.dataset,
-        batch_size=calib_size,
+        batch_size=args.calib_size,
         shuffle=False,
         collate_fn=calib_evaluator.collate_batch,
     )
@@ -241,19 +248,7 @@ if args.quantize:
 
     from neural_compressor import PostTrainingQuantConfig, quantization
 
-    if re.search("gptj", user_model.config.model_type) or re.search(
-        "gpt_neox", user_model.config.model_type
-    ):
-        op_type_dict = {
-            "add": {"weight": {"dtype": ["fp32"]}, "activation": {"dtype": ["fp32"]}},
-        }
-    elif re.search("mpt", user_model.config.model_type):
-        op_type_dict = {
-            "add": {"weight": {"dtype": ["fp32"]}, "activation": {"dtype": ["fp32"]}},
-            "<built-in function linear>":{"weight": {"dtype": ["fp32"]}, "activation": {"dtype": ["fp32"]}},
-        }
-    else:
-        op_type_dict = {}
+    op_type_dict = {}
     excluded_precisions = [] if args.int8_bf16_mixed else ["bf16"]
     if args.sq:
         args.alpha = args.alpha if args.alpha == "auto" else float(args.alpha)
@@ -282,17 +277,14 @@ if args.quantize:
     q_model.save(args.output_dir)
 
 # Generation
-generate_kwargs = dict(do_sample=False, temperature=0.9, num_beams=4)
+generate_kwargs = dict(do_sample=True, top_k=20, top_p=0.9)
 
 if args.int8 or args.int8_bf16_mixed:
     # TorchScript model don't attribute generate method, the wrapper is provided.
     if args.ipex:
-        user_model = TSModelForCausalLM.from_pretrained(
-            args.output_dir, file_name="best_model.pt", trust_remote_code=args.trust_remote_code
-        )
+        user_model = TSModelForCausalLM.from_pretrained(args.output_dir, file_name="best_model.pt")
     else:
         from neural_compressor.utils.pytorch import load
-
         user_model = load(args.output_dir, user_model)
 
 
