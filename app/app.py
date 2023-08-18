@@ -5,8 +5,9 @@ import transformers
 import time
 import argparse
 from streamlit.logger import get_logger
-from optimum.intel.generation.modeling import TSModelForCausalLM
 from transformers import LlamaTokenizer, LlamaForCausalLM, pipeline
+import intel_extension_for_pytorch as ipex
+from optimum.intel.generation.modeling import TSModelForCausalLM
 from langchain.chains import ConversationChain
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.llms import HuggingFacePipeline
@@ -62,7 +63,8 @@ parser.add_argument("--alpha",
                     help="Smooth quant parameter")
 
 parser.add_argument("--output_dir",
-                    default="./models")
+                    default="./models",
+                    help="Output directory for quantized model")
 
 parser.add_argument("--ipex",
                     action="store_true")
@@ -78,7 +80,6 @@ args = parser.parse_args()
 
 
 if args.ipex:
-    import intel_extension_for_pytorch as ipex
     try:
         ipex._C.disable_jit_linear_repack()
     except Exception:
@@ -129,9 +130,9 @@ def LLMPipeline(temperature,
     tokenizer = LlamaTokenizer.from_pretrained(model_id, token=hf_auth)
     model = LlamaForCausalLM.from_pretrained(model_id,
                                              torch_dtype=amp_dtype,
-                                             low_cpu_mem_usage=True,
-                                             torchscript=args.jit,
+                                             torchscript=True if args.sq or args.jit else False,
                                              token=hf_auth)
+    model = model.to(memory_format=torch.channels_last)
     model.eval()
     
     # Model params
@@ -141,7 +142,6 @@ def LLMPipeline(temperature,
     
     # Apply IPEX llm branch optimizations
     if args.ipex:
-        model = model.to(memory_format=torch.channels_last)
         model = ipex._optimize_transformers(model, dtype=amp_dtype, inplace=True)
     
     # Smooth quantization option
@@ -187,9 +187,11 @@ def LLMPipeline(temperature,
     ):
         for i in range(args.num_warmup):
             start = time.time()
-            input_ids = tokenizer(args.prompt, return_tensors="pt").input_ids.to(args.device)
-            output = model.generate(input_ids, max_new_tokens=args.max_new_tokens, do_sample=True, top_p=top_p, top_k=top_k)
-            logger.info('[INFO]: Time generation: %.3f sec \n' %(time.time()-start))
+            input_ids = tokenizer(args.prompt, return_tensors="pt").input_ids
+            output_ids = model.generate(input_ids, max_new_tokens=args.max_new_tokens, do_sample=True, top_p=top_p, top_k=top_k)
+            gen_text = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
+            logger.info('[INFO]: Time generation: %.3f sec' %(time.time()-start))
+            logger.info('{}'.format(gen_text))
     logger.info('[INFO]: Warmup finished \n')
     
     # Define HF pipeline
