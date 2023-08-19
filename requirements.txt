@@ -1,8 +1,11 @@
-transformers
-streamlit
-sentencepiece
-langchain
-accelerate
+transformers==4.31.0
+streamlit==1.25.0
+sentencepiece==0.1.99
+langchain==0.0.262
+accelerate==0.21.0
 git+https://github.com/huggingface/optimum-intel.git
---index-url https://download.pytorch.org/whl/cpu
-torch
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==2.0.1+cpu
+torchvision==0.15.2
+torchaudio==2.0.2
+intel_extension_for_pytorch==2.0.100
