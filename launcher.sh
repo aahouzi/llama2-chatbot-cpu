@@ -93,7 +93,7 @@ function start_app {
     # Check if there is a quantized model, when user selects smooth quantization
     if [[ $extra_cmd =~ "--sq" ]]; then
         echo -e '\n[INFO]: Re-installing app requirements to ensure PyTorch version is compatible..\n'
-        pip install requirements.txt
+        pip install -r requirements.txt
         if ! [ -f "$FILE" ]; then
             echo -e '\n[INFO]: Quantized model not detected, launching SmoothQuant process..\n'
             conda create -y -n smoothquant python=3.9 
