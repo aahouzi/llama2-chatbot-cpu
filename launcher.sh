@@ -24,7 +24,7 @@ function init_params {
   max_new_tokens=32
   prompt="Once upon time, there was"
   num_warmup=15
-  alpha=0.8
+  alpha="auto"
   extra_cmd=""
   for var in "$@"
   do
@@ -82,17 +82,32 @@ function init_params {
 
 
 function start_app {
-    
+
+    if [[ $extra_cmd =~ "--ipex" ]]; then
+        echo -e '\n[INFO]: Installing IPEX llm branch..\n'
+        python3 -m pip install torch==2.1.0.dev20230711+cpu torchvision==0.16.0.dev20230711+cpu torchaudio==2.1.0.dev20230711+cpu --index-url https://download.pytorch.org/whl/nightly/cpu
+        python3 -m pip install https://intel-extension-for-pytorch.s3.amazonaws.com/ipex_dev/cpu/intel_extension_for_pytorch-2.1.0.dev0%2Bcpu.llm-cp39-cp39-linux_x86_64.whl
+        conda install -y libstdcxx-ng=12 -c conda-forge
+    fi
+        
     # Check if there is a quantized model, when user selects smooth quantization
-    if [[ $extra_cmd =~ "--sq" ]] && ! [ -f "$FILE" ]; then
-        echo -e '\n[INFO]: Quantized model not detected, launching SmoothQuant process..\n'
-        conda create -y -n smoothquant python=3.9 && eval "$(conda shell.bash hook)" && conda activate smoothquant && pip install -r smoothquant/requirements.txt
-        python3 smoothquant/run_generation.py --model ${model_id} --alpha ${alpha} --auth_token ${auth_token} --quantize --sq --ipex
-        echo -e '\n[INFO]: Starting SmoothQuant performance evaluation..\n'
-        python3 smoothquant/run_generation.py --model ${model_id} --auth_token ${auth_token} --benchmark --ipex --int8
-        echo -e '\n[INFO]: Starting SmoothQuant accuracy evaluation..\n'
-        python3 smoothquant/run_generation.py --model ${model_id} --auth_token ${auth_token} --batch_size 112 --accuracy --int8 --ipex
-        conda deactivate && conda env remove -n smoothquant && conda activate $CONDA_ENV
+    if [[ $extra_cmd =~ "--sq" ]]; then
+        echo -e '\n[INFO]: Re-installing app requirements to ensure PyTorch version is compatible..\n'
+        pip install requirements.txt
+        if ! [ -f "$FILE" ]; then
+            echo -e '\n[INFO]: Quantized model not detected, launching SmoothQuant process..\n'
+            conda create -y -n smoothquant python=3.9 
+            eval "$(conda shell.bash hook)" 
+            conda activate smoothquant 
+            pip install -r smoothquant/requirements.txt
+            python3 smoothquant/run_generation.py --model ${model_id} --alpha ${alpha} --auth_token ${auth_token} --quantize --sq --ipex
+            echo -e '\n[INFO]: Starting SmoothQuant performance evaluation..\n'
+            python3 smoothquant/run_generation.py --model ${model_id} --auth_token ${auth_token} --benchmark --ipex --int8
+            echo -e '\n[INFO]: Starting SmoothQuant accuracy evaluation..\n'
+            # TODO: Fix evaluation issue
+            # python3 smoothquant/run_generation.py --model ${model_id} --auth_token ${auth_token} --batch_size 112 --accuracy --int8 --ipex
+            conda deactivate && conda env remove -n smoothquant && conda activate $CONDA_ENV
+        fi
     fi
     
     # Setup environment variables for performance on Xeon
@@ -107,7 +122,6 @@ function start_app {
     export LD_PRELOAD=${LD_PRELOAD}:${CONDA_PREFIX}/lib/libiomp5.so # Intel OpenMP
     export LD_PRELOAD=${LD_PRELOAD}:${CONDA_PREFIX}/lib/libtcmalloc.so
     export OMP_NUM_THREADS=${PHYSICAL_CORES}
-
 
     echo -e '\n[INFO]: Starting streamlit app..\n'
     numactl -m 0 -C 0-$(($PHYSICAL_CORES-1)) streamlit run ${script} \
