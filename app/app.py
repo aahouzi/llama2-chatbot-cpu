@@ -191,10 +191,10 @@ def LLMPipeline(temperature,
         for i in range(args.num_warmup):
             start = time.time()
             input_ids = tokenizer(args.prompt, return_tensors="pt").input_ids
-            output_ids = model.generate(input_ids, max_new_tokens=max_length, do_sample=True, top_p=top_p, top_k=top_k)
+            output_ids = model.generate(input_ids, max_new_tokens=args.max_new_tokens, do_sample=True, top_p=top_p, top_k=top_k)
             gen_text = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
             logger.info('[INFO]: Time generation: %.3f sec' %(time.time()-start))
-            logger.info('{}'.format(gen_text))
+            logger.info('[INFO]: {}'.format(gen_text))
     logger.info('[INFO]: Warmup finished \n')
     
     # Define HF pipeline
