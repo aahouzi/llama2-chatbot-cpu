@@ -2,7 +2,7 @@
 
 ## :monocle_face: Description
 - This project is a Streamlit chatbot deploying an **LLaMA2-7b-chat** model on **Intel® 4th Generation Xeon Scalable Processor CPU**.
-- The user can optimize the model using two techniques, and expect **up to 2.28x** speed-up compared to stock PyTorch:
+- The user can optimize the model using two techniques, and expect **up to 2.28x speed-up** compared to stock PyTorch:
     1. **Intel® Extension for PyTorch (IPEX) in bfloat16 with graph mode**.
     2. **Smooth quantization** (A new quantization technique specifically designed for LLMs: [ArXiv link](https://arxiv.org/pdf/2211.10438.pdf) ).
 
