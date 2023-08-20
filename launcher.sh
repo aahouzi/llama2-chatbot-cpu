@@ -1,7 +1,7 @@
 #!/bin/bash
 set -x
 
-CONDA_ENV=amall
+CONDA_ENV=llama2-chat
 FILE=./models/best_model.pt
 PHYSICAL_CORES=56
 
