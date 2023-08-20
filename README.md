@@ -1,1 +1,50 @@
-# Llama2 chatbot on CPU
+# LLaMA-2 chatbot on CPU
+
+## :monocle_face: Description
+- This project is a Streamlit chatbot deploying an **LLaMA2-7b-chat** model on **Intel® 4th Generation Xeon Scalable Processor CPU**.
+- The user can optimize the model using two techniques, and expect **up to 2.28x** speed-up compared to stock PyTorch:
+    1. **Intel® Extension for PyTorch (IPEX) in bfloat16 with graph mode**.
+    2. **Smooth quantization** (A new quantization technique specifically designed for LLMs: [ArXiv link](https://arxiv.org/pdf/2211.10438.pdf) ).
+
+- **Note:** The CPU needs to support bfloat16 ops in order to be able to use such optimization. On top of software optimizations, I also introduced some hardware optimizations like non-uniform memory access (NUMA). User needs to ask for access to LLaMA2 models by following this [link](https://huggingface.co/meta-llama#:~:text=Welcome%20to%20the%20official%20Hugging,processed%20within%201%2D2%20days). When getting approval from Meta, you can generate an authentification token from your HuggingFace account, and use it to load the model.
+
+## :scroll: Getting started
+
+1. Start by cloning the repository:  
+```bash
+git clone https://github.com/aahouzi/llama2-chatbot-cpu.git
+cd llama2-chatbot-cpu
+```
+2. Create a Python 3.9 conda environment:
+```bash
+conda create -y -n llama2-chat python=3.9
+```
+3. Activate the environment:  
+```bash
+conda activate llama2-chat
+```
+4. Install requirements for NUMA:  
+```bash
+conda install -y gperftools -c conda-forge
+conda install -y intel-openmp
+sudo apt install numactl
+```
+5. Install the app requirements:  
+```bash
+pip install -r requirements.txt
+```
+
+## :rocket: Start the app
+
+- IPEX in graph mode with bfloat16:
+```bash
+bash launcher.sh --script=app/app.py --port=<port> --auth_token=<auth_token> --dtype=bfloat16 --ipex --jit
+```
+
+- Smooth quantization:
+```bash
+bash launcher.sh --script=app/app.py --port=<port> --auth_token=<auth_token> --sq
+```
+
+
+
