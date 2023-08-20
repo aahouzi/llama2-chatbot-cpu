@@ -96,10 +96,7 @@ function start_app {
         pip install -r requirements.txt
         if ! [ -f "$FILE" ]; then
             echo -e '\n[INFO]: Quantized model not detected, launching SmoothQuant process..\n'
-            conda create -y -n smoothquant python=3.9 
-            eval "$(conda shell.bash hook)" 
-            conda activate smoothquant 
-            pip install -r smoothquant/requirements.txt
+            conda create -y -n smoothquant python=3.9 && eval "$(conda shell.bash hook)" && conda activate smoothquant && pip install -r smoothquant/requirements.txt
             python3 smoothquant/run_generation.py --model ${model_id} --alpha ${alpha} --auth_token ${auth_token} --quantize --sq --ipex
             echo -e '\n[INFO]: Starting SmoothQuant performance evaluation..\n'
             python3 smoothquant/run_generation.py --model ${model_id} --auth_token ${auth_token} --benchmark --ipex --int8
