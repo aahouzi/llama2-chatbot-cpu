@@ -2,11 +2,10 @@
 
 ## :monocle_face: Description
 - This project is a Streamlit chatbot deploying an **LLaMA2-7b-chat** model on **Intel® 4th Generation Xeon Scalable Processor CPU**.
-- The user can optimize the model using two techniques, and expect **up to 2.28x speed-up** compared to stock PyTorch:
-    1. **Intel® Extension for PyTorch (IPEX) in bfloat16 with graph mode**.
-    2. **Smooth quantization** (A new quantization technique specifically designed for LLMs: [ArXiv link](https://arxiv.org/pdf/2211.10438.pdf) ).
+- The user can optimize the model using  **Intel® Extension for PyTorch (IPEX) in bfloat16 with graph mode** or **smooth quantization** (A new quantization technique specifically designed for LLMs: [ArXiv link](https://arxiv.org/pdf/2211.10438.pdf) ).
+, and expect **up to 2.28x speed-up** compared to stock PyTorch.
 
-- **Note:** The CPU needs to support bfloat16 ops in order to be able to use such optimization. On top of software optimizations, I also introduced some hardware optimizations like non-uniform memory access (NUMA). User needs to ask for access to LLaMA2 models by following this [link](https://huggingface.co/meta-llama#:~:text=Welcome%20to%20the%20official%20Hugging,processed%20within%201%2D2%20days). When getting approval from Meta, you can generate an authentification token from your HuggingFace account, and use it to load the model.
+- **Note:** The CPU needs to support bfloat16 ops in order to be able to use such optimization. On top of software optimizations, I also introduced some hardware optimizations like non-uniform memory access (NUMA). User needs to **ask for access to LLaMA2** models by following this [link](https://huggingface.co/meta-llama#:~:text=Welcome%20to%20the%20official%20Hugging,processed%20within%201%2D2%20days). When getting approval from Meta, you can generate an authentification token from your HuggingFace account, and use it to load the model.
 
 ## :scroll: Getting started
 
