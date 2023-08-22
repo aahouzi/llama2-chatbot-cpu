@@ -112,11 +112,11 @@ def get_conversation(llm, window_len=args.window_len):
     window_memory = ConversationBufferWindowMemory(k=window_len)
     conversation = ConversationChain(
         llm=llm, 
-        verbose=False, 
+        verbose=True, 
         memory=window_memory
     )
 
-    conversation.prompt.template = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know. You are the AI, so answer all the questions adressed to you respectfully. Current conversation:\n{history}\nHuman: {input}\nAI:"""
+    conversation.prompt.template = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know. You are the AI, so answer all the questions adressed to you respectfully. You generate only when the human asks a question, and don't answer by acting as both a human and AI, remember this!, so don't ever generate text starting with "Human:..". Current conversation:\nAI: How can I help you today ? \n{history}\nHuman: {input}\nAI:"""
     
     return conversation
 
