@@ -99,26 +99,27 @@ amp_dtype = getattr(torch, args.dtype)
 
 # App title
 st.set_page_config(
-    page_title="LLaMa2-7b Chatbot",
+    page_title="LLaMA2-7b Chatbot",
     page_icon="🦙",
     layout="centered",
 )
 
 def clear_chat_history():
     st.session_state.messages = [{"role": "assistant", "content": "How can I help you today ?"}]
+    memory.clear()
     
 def get_conversation(llm, window_len=args.window_len):
     # Define memory
-    window_memory = ConversationBufferWindowMemory(k=window_len)
+    memory = ConversationBufferWindowMemory(k=window_len)
     conversation = ConversationChain(
         llm=llm, 
         verbose=True, 
-        memory=window_memory
+        memory=memory
     )
 
     conversation.prompt.template = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know. You are the AI, so answer all the questions adressed to you respectfully. You generate only when the human asks a question, and don't answer by acting as both a human and AI, remember this!, so don't ever generate text starting with "Human:..". Current conversation:\nAI: How can I help you today ? \n{history}\nHuman: {input}\nAI:"""
     
-    return conversation
+    return conversation, memory
 
 @st.cache_resource()
 def LLMPipeline(temperature, 
@@ -211,13 +212,13 @@ def LLMPipeline(temperature,
     llm = HuggingFacePipeline(pipeline=generate_text)
     
     # Create langchain conversation
-    conversation = get_conversation(llm)
+    conversation, memory = get_conversation(llm)
   
-    return conversation
+    return conversation, memory
 
 # Replicate Credentials
 with st.sidebar:
-    st.title('🦙 LLaMa2-7b Chatbot')   
+    st.title('🦙 LLaMA2-7b Chatbot')   
     
     # Text generation params
     st.subheader('Text generation parameters')
@@ -227,7 +228,7 @@ with st.sidebar:
     max_length = st.sidebar.slider('max_length', min_value=64, max_value=4096, value=512, step=8)
     
     # Load conversation
-    conversation = LLMPipeline(temperature, top_p, top_k, max_length, args.auth_token)
+    conversation, memory = LLMPipeline(temperature, top_p, top_k, max_length, args.auth_token)
 
 # Store LLM generated responses
 if "messages" not in st.session_state.keys():
