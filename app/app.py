@@ -234,18 +234,17 @@ with st.sidebar:
 if "messages" not in st.session_state.keys():
     st.session_state.messages = [{"role": "assistant", "content": "How can I help you today ?"}]
 
-# Display or clear chat messages
+# Display chatbot messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-        
-# Button to clear chat memory
+# Button to clear chatbot memory
 st.sidebar.write('\n')
 st.sidebar.write('\n')
-_, middle, _ = st.sidebar.columns([.3, 2.5, .1])
+_, middle, _ = st.sidebar.columns([.2, 2.5, .1])
 with middle :
-    clear_button = st.button(':arrows_counterclockwise: Clear Chat History', on_click=clear_chat_history)
+    clear_button = st.button(':arrows_counterclockwise: Clear Chatbot Memory', on_click=clear_chat_history)
 
 
 # User-provided prompt
