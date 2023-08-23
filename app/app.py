@@ -236,13 +236,13 @@ if "messages" not in st.session_state.keys():
 
 # Display chatbot messages
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
+    with st.chat_message(message["role"], avatar="🦙" if message["role"] == "assistant" else "🧑‍💻"):
         st.write(message["content"])
 
 # Button to clear chatbot memory
 st.sidebar.write('\n')
 st.sidebar.write('\n')
-_, middle, _ = st.sidebar.columns([.2, 2.5, .1])
+_, middle, _ = st.sidebar.columns([.16, 2.5, .1])
 with middle :
     clear_button = st.button(':arrows_counterclockwise: Clear Chatbot Memory', on_click=clear_chat_history)
 
@@ -250,12 +250,12 @@ with middle :
 # User-provided prompt
 if prompt := st.chat_input():
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar="🧑‍💻"):
         st.write(prompt)
 
 # Generate a new response if last message is not from assistant
 if st.session_state.messages[-1]["role"] != "assistant":
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar="🦙"):
         placeholder = st.empty()
         placeholder.markdown("▌")
         response = conversation.predict(input=prompt)
