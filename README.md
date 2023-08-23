@@ -44,5 +44,18 @@ bash launcher.sh --script=app/app.py --port=<port> --auth_token=<auth_token> --d
 bash launcher.sh --script=app/app.py --port=<port> --auth_token=<auth_token> --sq
 ```
 
+## :mailbox_closed: License & Contact
+This code is free to use, share and modify for any non-commercial purposes, any commercial use is strictly prohibited without the authors' consent.
+For any information, feedback or questions, please [contact me][anas-email]
+
+
+
+
+
+
+
+
+
+[anas-email]: mailto:ahouzi2000@hotmail.fr
 
 
