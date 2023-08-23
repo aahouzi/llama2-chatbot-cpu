@@ -239,7 +239,13 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-st.sidebar.button('Clear Chat History', on_click=clear_chat_history)
+        
+# Button to clear chat memory
+st.sidebar.write('\n')
+st.sidebar.write('\n')
+_, middle, _ = st.sidebar.columns([.3, 2.5, .1])
+with middle :
+    clear_button = st.button(':arrows_counterclockwise: Clear Chat History', on_click=clear_chat_history)
 
 
 # User-provided prompt
