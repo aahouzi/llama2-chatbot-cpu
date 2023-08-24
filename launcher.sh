@@ -62,6 +62,9 @@ function init_params {
       --alpha=*)
           alpha=$(echo $var | cut -f2 -d=)
       ;;
+      --physical_cores=*)
+          PHYSICAL_CORES=$(echo $var | cut -f2 -d=)
+      ;;
       --ipex)
           extra_cmd=$extra_cmd" --ipex"
       ;;
@@ -89,7 +92,7 @@ function start_app {
         python3 -m pip install https://intel-extension-for-pytorch.s3.amazonaws.com/ipex_dev/cpu/intel_extension_for_pytorch-2.1.0.dev0%2Bcpu.llm-cp39-cp39-linux_x86_64.whl
         conda install -y libstdcxx-ng=12 -c conda-forge
     fi
-        
+
     # Check if there is a quantized model, when user selects smooth quantization
     if [[ $extra_cmd =~ "--sq" ]]; then
         echo -e '\n[INFO]: Re-installing app requirements to ensure PyTorch version is compatible..\n'
