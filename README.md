@@ -54,8 +54,7 @@ bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_co
 bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_cores> --auth_token=<auth_token> --sq
 ```
 
-## :mailbox_closed: License & Contact
-This code is free to use, share and modify for any non-commercial purposes, any commercial use is strictly prohibited without the authors' consent.
+## :mailbox_closed: Contact
 For any information, feedback or questions, please [contact me][anas-email]
 
 
