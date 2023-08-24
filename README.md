@@ -54,6 +54,10 @@ bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_co
 bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_cores> --auth_token=<auth_token> --sq
 ```
 
+## :computer: Chatbot demo
+
+<video src='https://github.com/aahouzi/llama2-chatbot-cpu/assets/112881240/c455fe0e-224f-4182-8d58-7d6985e922af' width=180/>
+
 ## :mailbox_closed: Contact
 For any information, feedback or questions, please [contact me][anas-email]
 
