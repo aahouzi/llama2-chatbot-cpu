@@ -57,7 +57,7 @@ bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_co
 ## :computer: Chatbot demo
 
 <div>
-  <video src='https://github.com/aahouzi/llama2-chatbot-cpu/assets/112881240/c455fe0e-224f-4182-8d58-7d6985e922af' width=180/>
+  <video src='static/llama2-chatpot-demo.mp4' width=180/>
 </div>
 
 
