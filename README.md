@@ -10,8 +10,8 @@
 
 1. Start by cloning the repository:  
 ```bash
-git clone https://github.com/aahouzi/LLaMA2-chatbot-cpu.git
-cd LLaMA2-chatbot-cpu
+git clone https://github.com/aahouzi/llama2-chatbot-cpu.git
+cd llama2-chatbot-cpu
 ```
 2. Create a Python 3.9 conda environment:
 ```bash
@@ -36,22 +36,22 @@ pip install -r requirements.txt
 
 - Default mode (no optimizations):
 ```bash
-bash launcher.sh --script=app/app.py --port=<port> --auth_token=<auth_token>
+bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_cores> --auth_token=<auth_token>
 ```
 
 - IPEX in graph mode with FP32:
 ```bash
-bash launcher.sh --script=app/app.py --port=<port> --auth_token=<auth_token> --ipex --jit
+bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_cores> --auth_token=<auth_token> --ipex --jit
 ```
 
 - IPEX in graph mode with bfloat16:
 ```bash
-bash launcher.sh --script=app/app.py --port=<port> --auth_token=<auth_token> --dtype=bfloat16 --ipex --jit
+bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_cores> --auth_token=<auth_token> --dtype=bfloat16 --ipex --jit
 ```
 
 - Smooth quantization:
 ```bash
-bash launcher.sh --script=app/app.py --port=<port> --auth_token=<auth_token> --sq
+bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_cores> --auth_token=<auth_token> --sq
 ```
 
 ## :mailbox_closed: License & Contact
