@@ -57,7 +57,7 @@ bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_co
 ## :computer: Chatbot demo
 
     
-![](static/llama2-chatpot-demo.gif)
+![](static/Untitled.gif)
 
 
 
