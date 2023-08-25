@@ -1,4 +1,4 @@
-# LLaMA-2 chatbot on CPU
+# LLaMA2 chatbot on CPU
 
 ## :monocle_face: Description
 - This project is a Streamlit chatbot with Langchain deploying a **LLaMA2-7b-chat** model on **Intel® 4th Generation Xeon Scalable Processor CPU**.
