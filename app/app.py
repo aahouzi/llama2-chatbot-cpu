@@ -78,6 +78,10 @@ parser.add_argument("--sq",
                     action="store_true",
                     help="Enable inference with smooth quantization")
 
+parser.add_argument("--int4",
+                    action="store_true",
+                    help="Enable 4 bits quantization with bigdl-llm")
+
 
 args = parser.parse_args()
 
@@ -90,6 +94,9 @@ if args.ipex:
     
 if args.jit:
     torch._C._jit_set_texpr_fuser_enabled(False)
+    
+if args.int4:
+    from bigdl.llm.transformers import AutoModelForCausalLM
 
     
 # Check if amp is enabled
@@ -151,6 +158,11 @@ def LLMPipeline(temperature,
     # Smooth quantization option
     if args.sq:
         model = TSModelForCausalLM.from_pretrained(args.output_dir, file_name="best_model.pt")
+    
+    # 4bits quantization with bigdl
+    if args.int4:
+        model.save_pretrained("models/fp32")
+        model = AutoModelForCausalLM.from_pretrained("models/fp32", load_in_4bit=True)
     
     # IPEX Graph mode
     if args.jit and args.ipex:

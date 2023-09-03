@@ -74,6 +74,9 @@ function init_params {
       --sq)
           extra_cmd=$extra_cmd" --sq"
       ;;
+      --int4)
+          extra_cmd=$extra_cmd" --int4"
+      ;;
       *)
           echo "Error: No such parameter: ${var}"
           exit 1
