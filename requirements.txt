@@ -9,3 +9,4 @@ torch==2.0.1+cpu
 torchvision==0.15.2
 torchaudio==2.0.2
 intel_extension_for_pytorch==2.0.100
+bigdl-llm[all]
