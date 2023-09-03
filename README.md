@@ -2,7 +2,7 @@
 
 ## :monocle_face: Description
 - This project is a Streamlit chatbot with Langchain deploying a **LLaMA2-7b-chat** model on **Intel® Server and Client CPUs**.
-- The chatbot has a memory that **remembers every part of the speech**, and allows users to optimize the model using  **Intel® Extension for PyTorch (IPEX) in bfloat16 with graph mode**, **smooth quantization** (A new quantization technique specifically designed for LLMs: [ArXiv link](https://arxiv.org/pdf/2211.10438.pdf)), or **4bits quantization** and expect **up to 4.3x speed-up** compared to stock PyTorch in default mode.
+- The chatbot has a memory that **remembers every part of the speech**, and allows users to optimize the model using  **Intel® Extension for PyTorch (IPEX) in bfloat16 with graph mode**, **smooth quantization** (A new quantization technique specifically designed for LLMs: [ArXiv link](https://arxiv.org/pdf/2211.10438.pdf)), or **4-bit quantization** and expect **up to 4.3x speed-up** compared to stock PyTorch in default mode.
 
 - **Note:** The CPU needs to support bfloat16 ops in order to be able to use such optimization. On top of software optimizations, I also introduced some hardware optimizations like non-uniform memory access (NUMA). User needs to **ask for access to LLaMA2** models by following this [link](https://huggingface.co/meta-llama#:~:text=Welcome%20to%20the%20official%20Hugging,processed%20within%201%2D2%20days). When getting approval from Meta, you can generate an authentification token from your HuggingFace account, and use it to load the model.
 
@@ -54,7 +54,7 @@ bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_co
 bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_cores> --auth_token=<auth_token> --sq
 ```
 
-- 4bits quantization:
+- 4-bit quantization:
 ```bash
 bash launcher.sh --script=app/app.py --port=<port> --physical_cores=<physical_cores> --auth_token=<auth_token> --int4
 ```
