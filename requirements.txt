@@ -1,7 +1,7 @@
 transformers==4.36.0
 streamlit==1.25.0
 sentencepiece==0.1.99
-langchain==0.0.329
+langchain==0.1.0
 accelerate==0.21.0
 git+https://github.com/huggingface/optimum-intel.git
 --find-links https://download.pytorch.org/whl/torch_stable.html
