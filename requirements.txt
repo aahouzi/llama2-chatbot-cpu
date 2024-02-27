@@ -1,5 +1,5 @@
 transformers==4.36.0
-streamlit==1.25.0
+streamlit==1.30.0
 sentencepiece==0.1.99
 langchain==0.1.0
 accelerate==0.21.0
